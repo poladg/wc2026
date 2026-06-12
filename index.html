@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>World Cup 2026 — Prediction Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a1628; --card: #111e35; --card2: #172440; --border: #1e3050;
+    --gold: #f5c518; --green: #1db954; --red: #e74c3c; --gray: #7a8fa6;
+    --white: #e8f0f8; --blue: #2e86de;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--white); font-family: 'Inter', sans-serif; min-height: 100vh; }
+  header {
+    background: var(--card); border-bottom: 2px solid var(--gold);
+    padding: 0 20px; display: flex; align-items: center; justify-content: space-between;
+    height: 60px; position: sticky; top: 0; z-index: 100;
+  }
+  .logo { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 3px; color: var(--gold); }
+  .logo span { color: var(--white); }
+  .header-scores { display: flex; gap: 10px; }
+  .hscore { background: var(--card2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 14px; text-align: center; cursor: pointer; }
+  .hscore .hname { font-size: 10px; color: var(--gray); display: block; }
+  .hscore .hpts { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--gold); line-height: 1; }
+  .hscore.leader { border-color: var(--gold); }
+  .tabs { display: flex; gap: 3px; padding: 14px 20px 0; overflow-x: auto; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { background: var(--card); border: 1px solid var(--border); border-radius: 7px 7px 0 0; border-bottom: none; padding: 9px 16px; font-size: 12px; font-weight: 600; color: var(--gray); cursor: pointer; white-space: nowrap; transition: all .2s; }
+  .tab:hover { color: var(--white); }
+  .tab.active { background: var(--card2); color: var(--gold); border-color: var(--gold); }
+  main { padding: 0 20px 60px; }
+  .section { display: none; background: var(--card2); border: 1px solid var(--border); border-top: none; border-radius: 0 8px 8px 8px; padding: 20px; }
+  .section.active { display: block; }
+  .stage-title { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 2px; color: var(--gold); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  .refresh-btn { background: var(--card); border: 1px solid var(--border); color: var(--gray); border-radius: 6px; padding: 4px 12px; font-size: 11px; cursor: pointer; font-family: 'Inter', sans-serif; font-weight: 600; transition: all .2s; }
+  .refresh-btn:hover { border-color: var(--gold); color: var(--gold); }
+  .score-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+  .player-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; text-align: center; transition: border-color .3s; }
+  .player-card.leader { border-color: var(--gold); box-shadow: 0 0 20px rgba(245,197,24,.1); }
+  .player-name-input { background: transparent; border: none; border-bottom: 1px solid var(--border); color: var(--white); font-size: 15px; font-weight: 700; text-align: center; width: 100%; padding: 3px 0; outline: none; }
+  .player-name-input:focus { border-bottom-color: var(--gold); }
+  .player-pts { font-family: 'Bebas Neue', sans-serif; font-size: 52px; color: var(--gold); line-height: 1; margin: 6px 0 2px; }
+  .player-sub { font-size: 11px; color: var(--gray); }
+  .player-detail { font-size: 11px; color: var(--gray); margin-top: 8px; }
+  .legend { display: flex; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
+  .leg { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--gray); }
+  .leg-dot { width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
+  .matches-grid { display: grid; gap: 10px; }
+  .match-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; transition: border-color .2s; }
+  .match-card:hover { border-color: var(--blue); }
+  .match-meta { font-size: 10px; color: var(--gray); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+  .match-status { padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+  .status-live { background: rgba(231,76,60,.2); color: var(--red); animation: pulse 1s infinite; }
+  .status-finished { background: rgba(29,185,84,.15); color: var(--green); }
+  .status-scheduled { background: rgba(46,134,222,.15); color: var(--blue); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+  .match-teams { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .team { font-weight: 700; font-size: 14px; }
+  .team.right { text-align: right; }
+  .score-display { text-align: center; font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 3px; color: var(--white); min-width: 70px; }
+  .score-display.pending { color: var(--gray); font-size: 16px; }
+  .preds-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pred-label { font-size: 10px; color: var(--gray); margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .pred-inputs { display: flex; align-items: center; gap: 5px; }
+  .pred-input { width: 38px; background: var(--card2); border: 1px solid var(--border); border-radius: 6px; color: var(--white); font-size: 16px; font-weight: 700; text-align: center; padding: 5px 2px; outline: none; transition: border-color .2s; }
+  .pred-input:focus { border-color: var(--gold); }
+  .pred-sep { color: var(--gray); font-weight: 700; }
+  .pred-badge { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-left: 4px; flex-shrink: 0; }
+  .badge-exact { background: var(--gold); color: #000; }
+  .badge-outcome { background: var(--green); color: #fff; }
+  .badge-wrong { background: var(--red); color: #fff; }
+  .badge-pending { background: var(--border); color: var(--gray); }
+  .loading { text-align: center; padding: 40px; color: var(--gray); font-size: 14px; }
+  .spinner { display: inline-block; width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--gold); border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error-box { background: rgba(231,76,60,.08); border: 1px solid rgba(231,76,60,.3); border-radius: 10px; padding: 20px; text-align: center; }
+  .error-box h3 { color: var(--red); margin-bottom: 8px; font-size: 15px; }
+  .error-box p { color: var(--gray); font-size: 13px; line-height: 1.6; }
+  .error-box code { background: var(--card); padding: 2px 6px; border-radius: 4px; font-size: 12px; color: var(--gold); }
+  .results-wrap { overflow-x: auto; }
+  table.rtable { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 480px; }
+  .rtable th { text-align: left; padding: 8px 10px; color: var(--gray); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+  .rtable td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .rtable tr:last-child td { border-bottom: none; }
+  .rbadge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+  .rbadge.exact { background: rgba(245,197,24,.2); color: var(--gold); }
+  .rbadge.outcome { background: rgba(29,185,84,.15); color: var(--green); }
+  .rbadge.wrong { background: rgba(231,76,60,.15); color: var(--red); }
+  .rbadge.pending { background: rgba(30,48,80,.8); color: var(--gray); }
+  .schedule-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .schedule-row:last-child { border-bottom: none; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(60px); background: var(--green); color: #fff; padding: 10px 22px; border-radius: 20px; font-size: 13px; font-weight: 600; transition: transform .3s; z-index: 999; pointer-events: none; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  @media (max-width: 580px) {
+    .team { font-size: 12px; } .score-display { font-size: 22px; }
+    header { padding: 0 12px; } main { padding: 0 12px 60px; }
+    .tabs { padding: 10px 12px 0; } .section { padding: 14px 10px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">WC<span>2026</span></div>
+  <div class="header-scores">
+    <div class="hscore" id="hs1" onclick="switchTab('leaderboard')">
+      <span class="hname" id="hs1name">Player 1</span>
+      <span class="hpts" id="hs1pts">0</span>
+    </div>
+    <div class="hscore" id="hs2" onclick="switchTab('leaderboard')">
+      <span class="hname" id="hs2name">Player 2</span>
+      <span class="hpts" id="hs2pts">0</span>
+    </div>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('overview')" id="tab-overview">🏆 Overview</div>
+  <div class="tab" onclick="switchTab('group')" id="tab-group">⚽ Group Stage</div>
+  <div class="tab" onclick="switchTab('r32')" id="tab-r32">Round of 32</div>
+  <div class="tab" onclick="switchTab('r16')" id="tab-r16">Round of 16</div>
+  <div class="tab" onclick="switchTab('qf')" id="tab-qf">Quarter-finals</div>
+  <div class="tab" onclick="switchTab('sf')" id="tab-sf">Semi-finals</div>
+  <div class="tab" onclick="switchTab('final')" id="tab-final">🥇 Final</div>
+  <div class="tab" onclick="switchTab('leaderboard')" id="tab-leaderboard">📊 Leaderboard</div>
+</div>
+
+<main>
+
+<div class="section active" id="section-overview">
+  <div class="score-grid">
+    <div class="player-card" id="ov-card1">
+      <div style="font-size:32px;margin-bottom:6px">⚽</div>
+      <input class="player-name-input" id="p1name" placeholder="Player 1" maxlength="18" oninput="saveName(1)">
+      <div class="player-pts" id="ov-p1pts">0</div>
+      <div class="player-sub">points</div>
+      <div class="player-detail" id="ov-p1detail">Exact: 0 · Outcome: 0</div>
+    </div>
+    <div class="player-card" id="ov-card2">
+      <div style="font-size:32px;margin-bottom:6px">⚽</div>
+      <input class="player-name-input" id="p2name" placeholder="Player 2" maxlength="18" oninput="saveName(2)">
+      <div class="player-pts" id="ov-p2pts">0</div>
+      <div class="player-sub">points</div>
+      <div class="player-detail" id="ov-p2detail">Exact: 0 · Outcome: 0</div>
+    </div>
+  </div>
+  <div class="legend">
+    <div class="leg"><div class="leg-dot" style="background:var(--gold);color:#000">3</div> Exact score = 3 pts</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--green);color:#fff">1</div> Correct outcome = 1 pt</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--red);color:#fff">0</div> Miss = 0 pts</div>
+  </div>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px">
+    <div class="stage-title" style="margin-bottom:12px;font-size:16px">📅 Tournament Schedule</div>
+    <div class="schedule-row"><span>Group stage</span><span style="color:var(--gold)">June 11–27</span></div>
+    <div class="schedule-row"><span>Round of 32</span><span style="color:var(--gold)">June 28 – July 3</span></div>
+    <div class="schedule-row"><span>Round of 16</span><span style="color:var(--gold)">July 4–7</span></div>
+    <div class="schedule-row"><span>Quarter-finals</span><span style="color:var(--gold)">July 9–11</span></div>
+    <div class="schedule-row"><span>Semi-finals</span><span style="color:var(--gold)">July 14–15</span></div>
+    <div class="schedule-row"><span>🥇 Final</span><span style="color:var(--gold)">July 19</span></div>
+  </div>
+</div>
+
+<div class="section" id="section-group">
+  <div class="stage-title">Group Stage · June 11–27 <button class="refresh-btn" onclick="loadStage('group',true)">↻ Refresh</button></div>
+  <div id="matches-group"><div class="loading"><div class="spinner"></div><br>Loading…</div></div>
+</div>
+<div class="section" id="section-r32">
+  <div class="stage-title">Round of 32 · June 28 – July 3 <button class="refresh-btn" onclick="loadStage('r32',true)">↻ Refresh</button></div>
+  <div id="matches-r32"><div class="loading"><div class="spinner"></div><br>Loading…</div></div>
+</div>
+<div class="section" id="section-r16">
+  <div class="stage-title">Round of 16 · July 4–7 <button class="refresh-btn" onclick="loadStage('r16',true)">↻ Refresh</button></div>
+  <div id="matches-r16"><div class="loading"><div class="spinner"></div><br>Loading…</div></div>
+</div>
+<div class="section" id="section-qf">
+  <div class="stage-title">Quarter-finals · July 9–11 <button class="refresh-btn" onclick="loadStage('qf',true)">↻ Refresh</button></div>
+  <div id="matches-qf"><div class="loading"><div class="spinner"></div><br>Loading…</div></div>
+</div>
+<div class="section" id="section-sf">
+  <div class="stage-title">Semi-finals · July 14–15 <button class="refresh-btn" onclick="loadStage('sf',true)">↻ Refresh</button></div>
+  <div id="matches-sf"><div class="loading"><div class="spinner"></div><br>Loading…</div></div>
+</div>
+<div class="section" id="section-final">
+  <div class="stage-title">🥇 Final · July 19 <button class="refresh-btn" onclick="loadStage('final',true)">↻ Refresh</button></div>
+  <div id="matches-final"><div class="loading"><div class="spinner"></div><br>Loading…</div></div>
+</div>
+
+<div class="section" id="section-leaderboard">
+  <div class="stage-title">📊 Full Leaderboard</div>
+  <div class="score-grid" style="margin-bottom:20px">
+    <div class="player-card" id="lb-card1">
+      <input class="player-name-input" id="lb-p1name" placeholder="Player 1" maxlength="18" oninput="syncName(1)">
+      <div class="player-pts" id="lb-p1pts">0</div>
+      <div class="player-sub">points</div>
+    </div>
+    <div class="player-card" id="lb-card2">
+      <input class="player-name-input" id="lb-p2name" placeholder="Player 2" maxlength="18" oninput="syncName(2)">
+      <div class="player-pts" id="lb-p2pts">0</div>
+      <div class="player-sub">points</div>
+    </div>
+  </div>
+  <div class="results-wrap">
+    <table class="rtable">
+      <thead><tr>
+        <th>Match</th><th>Result</th>
+        <th id="lb-th1">Player 1</th>
+        <th id="lb-th2">Player 2</th>
+      </tr></thead>
+      <tbody id="lb-body"></tbody>
+    </table>
+  </div>
+</div>
+
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const API_KEY = 'ba22b1349e3b42c987ab1dcb5ae98fa6';
+// Use allorigins proxy to bypass CORS for local file usage
+const PROXY = 'https://api.allorigins.win/raw?url=';
+const API_BASE = 'https://api.football-data.org/v4';
+
+const STAGE_KEYS = {
+  group: ['GROUP_STAGE'],
+  r32:   ['LAST_32'],
+  r16:   ['LAST_16'],
+  qf:    ['QUARTER_FINALS'],
+  sf:    ['SEMI_FINALS'],
+  final: ['FINAL','THIRD_PLACE']
+};
+const ALL_STAGES = ['group','r32','r16','qf','sf','final'];
+
+let state = { p1name:'', p2name:'', preds:{} };
+let matchCache = {};
+let stageLoaded = {};
+
+function loadState() {
+  try {
+    const r = localStorage.getItem('wc2026v3');
+    if (r) { const p = JSON.parse(r); state.p1name = p.p1name||''; state.p2name = p.p2name||''; state.preds = p.preds||{}; }
+  } catch(e) {}
+}
+function saveState() {
+  localStorage.setItem('wc2026v3', JSON.stringify({ p1name: state.p1name, p2name: state.p2name, preds: state.preds }));
+}
+
+// ── API ──────────────────────────────────────────────────────
+async function apiFetch(path) {
+  const url = encodeURIComponent(`${API_BASE}${path}`);
+  // Try direct first (works when hosted on server), fallback to proxy
+  try {
+    const r = await fetch(`${API_BASE}${path}`, {
+      headers: { 'X-Auth-Token': API_KEY },
+      signal: AbortSignal.timeout(8000)
+    });
+    if (r.ok) return await r.json();
+  } catch(e) {}
+  // Fallback: proxy
+  try {
+    const r = await fetch(`${PROXY}${encodeURIComponent(`${API_BASE}${path}`)}&headers=${encodeURIComponent(JSON.stringify({'X-Auth-Token': API_KEY}))}`, {
+      signal: AbortSignal.timeout(12000)
+    });
+    if (r.ok) return await r.json();
+  } catch(e) {}
+  return null;
+}
+
+async function fetchMatches(stage, forceRefresh) {
+  const data = await apiFetch('/competitions/WC/matches');
+  if (!data) return null;
+  const all = data.matches || [];
+  all.forEach(m => { matchCache[m.id] = m; });
+  const keys = STAGE_KEYS[stage] || [];
+  const filtered = all.filter(m => keys.some(k => (m.stage||'').toUpperCase() === k));
+  return filtered.length > 0 ? filtered : all;
+}
+
+// ── SCORING ──────────────────────────────────────────────────
+function outcome(h, a) {
+  const hi = parseInt(h), ai = parseInt(a);
+  if (isNaN(hi)||isNaN(ai)) return null;
+  return hi > ai ? 'H' : ai > hi ? 'A' : 'D';
+}
+function scoreFor(id, p) {
+  const m = matchCache[id];
+  if (!m) return {pts:0, status:'pending'};
+  const ft = m.score?.fullTime;
+  const ah = ft?.home, aa = ft?.away;
+  if (ah===null||ah===undefined||!['FINISHED','IN_PLAY','PAUSED'].includes(m.status)) return {pts:0, status:'pending'};
+  const pred = state.preds[id];
+  if (!pred) return {pts:0, status:'pending'};
+  const ph = p===1 ? pred.p1h : pred.p2h, pa = p===1 ? pred.p1a : pred.p2a;
+  if (ph===''||ph===undefined) return {pts:0, status:'pending'};
+  if (String(ph)===String(ah) && String(pa)===String(aa)) return {pts:3, status:'exact'};
+  const ao=outcome(ah,aa), po=outcome(ph,pa);
+  if (ao&&po&&ao===po) return {pts:1, status:'outcome'};
+  return {pts:0, status:'wrong'};
+}
+function calcTotals() {
+  let p1={pts:0,exact:0,out:0}, p2={pts:0,exact:0,out:0};
+  Object.keys(matchCache).forEach(id => {
+    const s1=scoreFor(id,1), s2=scoreFor(id,2);
+    p1.pts+=s1.pts; p2.pts+=s2.pts;
+    if(s1.status==='exact')p1.exact++; if(s1.status==='outcome')p1.out++;
+    if(s2.status==='exact')p2.exact++; if(s2.status==='outcome')p2.out++;
+  });
+  return {p1,p2};
+}
+
+// ── RENDER ───────────────────────────────────────────────────
+function fmtDate(d) {
+  if (!d) return '';
+  const dt = new Date(d);
+  return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' · '+dt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+}
+function statusBadge(s) {
+  if (s==='FINISHED') return '<span class="match-status status-finished">Finished</span>';
+  if (s==='IN_PLAY'||s==='PAUSED') return '<span class="match-status status-live">● LIVE</span>';
+  return '<span class="match-status status-scheduled">Upcoming</span>';
+}
+function badge(s) {
+  if (s.status==='exact') return '<span class="pred-badge badge-exact">3</span>';
+  if (s.status==='outcome') return '<span class="pred-badge badge-outcome">1</span>';
+  if (s.status==='wrong') return '<span class="pred-badge badge-wrong">✗</span>';
+  return '<span class="pred-badge badge-pending">?</span>';
+}
+
+function renderMatchCard(m) {
+  const id = m.id;
+  const home = m.homeTeam?.shortName || m.homeTeam?.name || 'TBD';
+  const away = m.awayTeam?.shortName || m.awayTeam?.name || 'TBD';
+  const ft = m.score?.fullTime;
+  const ah = ft?.home, aa = ft?.away;
+  const hasScore = (ah!==null&&ah!==undefined&&['FINISHED','IN_PLAY','PAUSED'].includes(m.status));
+  const pred = state.preds[id]||{};
+  const s1=scoreFor(id,1), s2=scoreFor(id,2);
+  const n1=state.p1name||'Player 1', n2=state.p2name||'Player 2';
+  return `<div class="match-card">
+    <div class="match-meta"><span>${fmtDate(m.utcDate)} · ${m.group||m.stage||''}</span>${statusBadge(m.status)}</div>
+    <div class="match-teams">
+      <div class="team">${home}</div>
+      <div class="score-display${hasScore?'':' pending'}">${hasScore?ah+' : '+aa:'— : —'}</div>
+      <div class="team right">${away}</div>
+    </div>
+    <div class="preds-row">
+      <div><div class="pred-label">${n1}</div>
+        <div class="pred-inputs">
+          <input class="pred-input" type="number" min="0" max="30" placeholder="?" value="${pred.p1h??''}" oninput="setPred(${id},'p1h',this.value)">
+          <span class="pred-sep">:</span>
+          <input class="pred-input" type="number" min="0" max="30" placeholder="?" value="${pred.p1a??''}" oninput="setPred(${id},'p1a',this.value)">
+          ${badge(s1)}
+        </div>
+      </div>
+      <div><div class="pred-label">${n2}</div>
+        <div class="pred-inputs">
+          <input class="pred-input" type="number" min="0" max="30" placeholder="?" value="${pred.p2h??''}" oninput="setPred(${id},'p2h',this.value)">
+          <span class="pred-sep">:</span>
+          <input class="pred-input" type="number" min="0" max="30" placeholder="?" value="${pred.p2a??''}" oninput="setPred(${id},'p2a',this.value)">
+          ${badge(s2)}
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function errorBox(stage) {
+  return `<div class="error-box">
+    <h3>⚠️ Could not load live data</h3>
+    <p>The browser is blocking the API request from a local file (CORS restriction).<br><br>
+    <strong>Fix:</strong> Upload this file to any web server, or open it via a local server:<br>
+    <code>npx serve .</code> or <code>python3 -m http.server 8080</code><br><br>
+    Then open <code>http://localhost:8080</code> in your browser.</p>
+  </div>`;
+}
+
+async function loadStage(stage, force) {
+  if (stageLoaded[stage] && !force) return;
+  const el = document.getElementById(`matches-${stage}`);
+  el.innerHTML = `<div class="loading"><div class="spinner"></div><br>Fetching live data…</div>`;
+  const matches = await fetchMatches(stage);
+  stageLoaded[stage] = true;
+  if (!matches) { el.innerHTML = errorBox(stage); return; }
+  if (matches.length === 0) { el.innerHTML = `<div class="loading">No matches available for this stage yet.</div>`; return; }
+  el.innerHTML = `<div class="matches-grid">${matches.map(renderMatchCard).join('')}</div>`;
+  updateScores();
+}
+
+// ── ACTIONS ──────────────────────────────────────────────────
+function setPred(id, field, val) {
+  if (!state.preds[id]) state.preds[id] = {};
+  state.preds[id][field] = val===''?'':String(Math.max(0,parseInt(val)||0));
+  saveState(); updateScores(); if (document.getElementById('section-leaderboard').classList.contains('active')) renderLeaderboard();
+}
+function saveName(p) {
+  const v = document.getElementById(`p${p}name`).value;
+  state[`p${p}name`] = v;
+  document.getElementById(`lb-p${p}name`).value = v;
+  document.getElementById(`hs${p}name`).textContent = v||`Player ${p}`;
+  document.getElementById(`lb-th${p}`).textContent = v||`Player ${p}`;
+  saveState();
+  // Re-render active stage so name labels update
+  ALL_STAGES.forEach(s => {
+    if (document.getElementById(`section-${s}`).classList.contains('active') && stageLoaded[s]) loadStage(s, true);
+  });
+}
+function syncName(p) {
+  const v = document.getElementById(`lb-p${p}name`).value;
+  state[`p${p}name`] = v;
+  document.getElementById(`p${p}name`).value = v;
+  document.getElementById(`hs${p}name`).textContent = v||`Player ${p}`;
+  document.getElementById(`lb-th${p}`).textContent = v||`Player ${p}`;
+  saveState();
+}
+function updateScores() {
+  const {p1,p2} = calcTotals();
+  ['ov','lb'].forEach(px => {
+    const a=document.getElementById(`${px}-p1pts`), b=document.getElementById(`${px}-p2pts`);
+    if(a)a.textContent=p1.pts; if(b)b.textContent=p2.pts;
+  });
+  document.getElementById('hs1pts').textContent=p1.pts;
+  document.getElementById('hs2pts').textContent=p2.pts;
+  const d1=document.getElementById('ov-p1detail'), d2=document.getElementById('ov-p2detail');
+  if(d1)d1.textContent=`Exact: ${p1.exact} · Outcome: ${p1.out}`;
+  if(d2)d2.textContent=`Exact: ${p2.exact} · Outcome: ${p2.out}`;
+  ['ov-card1','lb-card1','hs1'].forEach(id=>{const e=document.getElementById(id);if(e)e.classList.toggle('leader',p1.pts>p2.pts&&p1.pts>0);});
+  ['ov-card2','lb-card2','hs2'].forEach(id=>{const e=document.getElementById(id);if(e)e.classList.toggle('leader',p2.pts>p1.pts&&p2.pts>0);});
+}
+function renderLeaderboard() {
+  const tbody=document.getElementById('lb-body');
+  if(!tbody)return;
+  const rows=Object.values(matchCache).map(m=>{
+    const s1=scoreFor(m.id,1),s2=scoreFor(m.id,2);
+    const pred=state.preds[m.id]||{};
+    const ft=m.score?.fullTime;
+    const ah=ft?.home,aa=ft?.away;
+    const hasScore=(ah!==null&&ah!==undefined&&['FINISHED','IN_PLAY','PAUSED'].includes(m.status));
+    const res=hasScore?`${ah}:${aa}`:'—';
+    const p1s=pred.p1h!==undefined&&pred.p1h!==''?`${pred.p1h}:${pred.p1a}`:'—';
+    const p2s=pred.p2h!==undefined&&pred.p2h!==''?`${pred.p2h}:${pred.p2a}`:'—';
+    function rb(s){
+      if(s.status==='exact')return'<span class="rbadge exact">+3</span>';
+      if(s.status==='outcome')return'<span class="rbadge outcome">+1</span>';
+      if(s.status==='wrong')return'<span class="rbadge wrong">0</span>';
+      return'<span class="rbadge pending">—</span>';
+    }
+    return `<tr><td><strong>${m.homeTeam?.shortName||'TBD'}</strong> vs <strong>${m.awayTeam?.shortName||'TBD'}</strong><br><span style="font-size:10px;color:var(--gray)">${fmtDate(m.utcDate)}</span></td>
+      <td style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px">${res}</td>
+      <td>${p1s} ${rb(s1)}</td><td>${p2s} ${rb(s2)}</td></tr>`;
+  });
+  tbody.innerHTML=rows.join('');
+  updateScores();
+}
+
+// ── TABS ─────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  document.getElementById(`section-${tab}`).classList.add('active');
+  if (ALL_STAGES.includes(tab)) loadStage(tab);
+  if (tab==='leaderboard') renderLeaderboard();
+}
+
+// ── INIT ─────────────────────────────────────────────────────
+loadState();
+document.getElementById('p1name').value=state.p1name;
+document.getElementById('p2name').value=state.p2name;
+document.getElementById('lb-p1name').value=state.p1name;
+document.getElementById('lb-p2name').value=state.p2name;
+document.getElementById('hs1name').textContent=state.p1name||'Player 1';
+document.getElementById('hs2name').textContent=state.p2name||'Player 2';
+document.getElementById('lb-th1').textContent=state.p1name||'Player 1';
+document.getElementById('lb-th2').textContent=state.p2name||'Player 2';
+updateScores();
+</script>
+</body>
+</html>

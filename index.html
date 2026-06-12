@@ -385,9 +385,7 @@ function sp(id,player,side,v){
 }
 function saveName(i,v){
   S.names[i]=v;
-  renderPlayerCards();
   scheduleSave();
-  ALL.forEach(s=>{if(document.getElementById('section-'+s).classList.contains('active')&&loaded[s])load(s,1);});
 }
 function renderAll(){
   renderPlayerCards();

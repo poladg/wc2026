@@ -377,6 +377,8 @@ function lb(){
 
 // ── ACTIONS ───────────────────────────────────────────────────
 function sp(id,player,side,v){
+  const m=cache[id];
+  if(m&&['IN_PLAY','PAUSED','FINISHED'].includes(m.status))return;
   if(!S.preds[id])S.preds[id]={};
   const key='p'+(player+1)+(side==='h'?'h':'a');
   S.preds[id][key]=v===''?'':String(Math.max(0,parseInt(v)||0));

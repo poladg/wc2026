@@ -177,7 +177,7 @@ async function loadRemote(){
     const data=await r.json();
     S.names=data.names||['','','',''];
     S.preds=data.preds||{};
-    renderAll();
+    renderPlayerCards();
     syncStatus('ok','Synced · '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}));
     toast('Synced ✓');
   }catch(e){syncStatus('err','Sync failed');}
@@ -411,7 +411,7 @@ function toast(msg){
 // ── INIT ──────────────────────────────────────────────────────
 renderPlayerCards();
 loadRemote();
-setInterval(loadRemote,30000);
+setInterval(loadRemote,300000);
 </script>
 </body>
 </html>

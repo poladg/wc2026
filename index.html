@@ -37,6 +37,7 @@
   .pcard.p2.leader{border-color:var(--p2);}
   .pcard.p3.leader{border-color:var(--p3);}
   .pcard.p4.leader{border-color:var(--p4);}
+  .pcard.p5.leader{border-color:var(--p5);}
   .pname{background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--white);font-size:14px;font-weight:700;text-align:center;width:100%;padding:3px 0;outline:none;}
   .pname:focus{border-bottom-color:var(--gold);}
   .ppts{font-family:'Bebas Neue',sans-serif;font-size:44px;line-height:1;margin:6px 0 2px;}
@@ -44,6 +45,7 @@
   .pcard.p2 .ppts{color:var(--p2);}
   .pcard.p3 .ppts{color:var(--p3);}
   .pcard.p4 .ppts{color:var(--p4);}
+  .pcard.p5 .ppts{color:var(--p5);}
   .psub{font-size:11px;color:var(--gray);}
   .pdet{font-size:10px;color:var(--gray);margin-top:6px;}
   .legend{display:flex;gap:14px;margin-bottom:18px;flex-wrap:wrap;}
@@ -67,6 +69,7 @@
   .pinps{display:flex;align-items:center;gap:4px;}
   .pinp{width:34px;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--white);font-size:15px;font-weight:700;text-align:center;padding:4px 2px;outline:none;transition:border-color .2s;}
   .pinp:focus{border-color:var(--gold);}
+  .pinp:disabled{opacity:0.4;cursor:not-allowed;}
   .psep{color:var(--gray);font-weight:700;font-size:13px;}
   .pbadge{width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin-left:3px;flex-shrink:0;}
   .b-ex{background:var(--gold);color:#000;}
@@ -159,29 +162,39 @@ const API_MATCHES = '/api/matches';
 const API_PREDS   = '/api/predictions';
 const ALL = ['group','r32','r16','qf','sf','final'];
 
-let S = { names: ['','','',''], preds: {} };
+let S = { names: ['','','','',''], preds: {} };
 let cache = {};
 let loaded = {};
 let saveTimer = null;
+let isSyncing = false;
 
-// ── SYNC ──────────────────────────────────────────────────────
 function syncStatus(state,txt){
   const dot=document.getElementById('sync-dot'),lbl=document.getElementById('sync-txt');
   dot.className='sync-dot'+(state?' '+state:'');lbl.textContent=txt;
 }
+
 async function loadRemote(){
+  if(isSyncing) return;
+  isSyncing = true;
   syncStatus('syncing','Syncing…');
   try{
     const r=await fetch(API_PREDS);
     if(!r.ok)throw new Error('HTTP '+r.status);
     const data=await r.json();
-    S.names=data.names||['','','',''];
+    S.names=data.names||['','','','',''];
     S.preds=data.preds||{};
     renderPlayerCards();
+    if(Object.keys(cache).length===0){
+      fetchStage('group').then(()=>renderPlayerCards()).catch(()=>{});
+    }
     syncStatus('ok','Synced · '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}));
     toast('Synced ✓');
-  }catch(e){syncStatus('err','Sync failed');}
+  }catch(e){
+    syncStatus('err','Sync failed');
+  }
+  isSyncing = false;
 }
+
 async function saveRemote(){
   syncStatus('syncing','Saving…');
   try{
@@ -189,10 +202,14 @@ async function saveRemote(){
     syncStatus('ok','Saved · '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}));
   }catch(e){syncStatus('err','Save failed');}
 }
-function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveRemote,1500);}
-function syncNow(){loadRemote();}
 
-// ── MATCHES API ───────────────────────────────────────────────
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(saveRemote,3000);
+}
+
+function syncNow(){ loadRemote(); }
+
 async function fetchStage(stage){
   const r=await fetch(`${API_MATCHES}?stage=${stage}`);
   if(!r.ok)throw new Error('HTTP '+r.status);
@@ -202,7 +219,6 @@ async function fetchStage(stage){
   return data.matches||[];
 }
 
-// ── SCORING ───────────────────────────────────────────────────
 function oc(h,a){const hi=parseInt(h),ai=parseInt(a);if(isNaN(hi)||isNaN(ai))return null;return hi>ai?'H':ai>hi?'A':'D';}
 function sc(id,p){
   const m=cache[id];if(!m)return{pts:0,st:'pe'};
@@ -229,30 +245,41 @@ function totals(){
   return res;
 }
 
-// ── RENDER PLAYER CARDS ───────────────────────────────────────
 function renderPlayerCards(){
   const tots=totals();
   const maxPts=Math.max(...tots.map(t=>t.pts));
 
-  // Overview cards
   const ov=document.getElementById('player-cards');
-  ov.innerHTML=Array.from({length:PLAYERS},(_,i)=>{
-    const t=tots[i];
-    const isLeader=t.pts===maxPts&&t.pts>0;
-    return`<div class="pcard p${i+1}${isLeader?' leader':''}">
-      <input class="pname" id="pn${i}" placeholder="Player ${i+1}" maxlength="16" value="${S.names[i]||''}" oninput="saveName(${i},this.value)">
-      <div class="ppts">${t.pts}</div>
-      <div class="psub">points</div>
-      <div class="pdet">Exact: ${t.ex} · Outcome: ${t.ou}</div>
-    </div>`;
-  }).join('');
+  if(ov){
+    const existing=ov.querySelectorAll('.pcard');
+    if(existing.length===PLAYERS){
+      existing.forEach((card,i)=>{
+        const t=tots[i];
+        const isLeader=t.pts===maxPts&&t.pts>0;
+        card.className=`pcard p${i+1}${isLeader?' leader':''}`;
+        const pts=card.querySelector('.ppts');
+        const det=card.querySelector('.pdet');
+        if(pts)pts.textContent=t.pts;
+        if(det)det.textContent=`Exact: ${t.ex} · Outcome: ${t.ou}`;
+      });
+    } else {
+      ov.innerHTML=Array.from({length:PLAYERS},(_,i)=>{
+        const t=tots[i];
+        const isLeader=t.pts===maxPts&&t.pts>0;
+        return`<div class="pcard p${i+1}${isLeader?' leader':''}">
+          <input class="pname" placeholder="Player ${i+1}" maxlength="16" value="${S.names[i]||''}" oninput="saveName(${i},this.value)">
+          <div class="ppts">${t.pts}</div>
+          <div class="psub">points</div>
+          <div class="pdet">Exact: ${t.ex} · Outcome: ${t.ou}</div>
+        </div>`;
+      }).join('');
+    }
+  }
 
-  // Leaderboard cards
-  const lb=document.getElementById('lb-cards');
-  if(lb){
-    // Sort by points
-    const order=[0,1,2,3].sort((a,b)=>tots[b].pts-tots[a].pts);
-    lb.innerHTML=order.map(i=>{
+  const lbc=document.getElementById('lb-cards');
+  if(lbc){
+    const order=Array.from({length:PLAYERS},(_,i)=>i).sort((a,b)=>tots[b].pts-tots[a].pts);
+    lbc.innerHTML=order.map(i=>{
       const t=tots[i];
       const isLeader=t.pts===maxPts&&t.pts>0;
       return`<div class="pcard p${i+1}${isLeader?' leader':''}">
@@ -263,19 +290,19 @@ function renderPlayerCards(){
     }).join('');
   }
 
-  // Header scores
   const hs=document.getElementById('header-scores');
-  hs.innerHTML=Array.from({length:PLAYERS},(_,i)=>{
-    const t=tots[i];
-    const isLeader=t.pts===maxPts&&t.pts>0;
-    const color=`var(${COLORS[i]})`;
-    return`<div class="hs${isLeader?' leader':''}" onclick="go('leaderboard')" style="${isLeader?'border-color:'+color:''}">
-      <span class="hn">${S.names[i]||'P'+(i+1)}</span>
-      <span class="hp" style="color:${color}">${t.pts}</span>
-    </div>`;
-  }).join('');
+  if(hs){
+    hs.innerHTML=Array.from({length:PLAYERS},(_,i)=>{
+      const t=tots[i];
+      const isLeader=t.pts===maxPts&&t.pts>0;
+      const color=`var(${COLORS[i]})`;
+      return`<div class="hs${isLeader?' leader':''}" onclick="go('leaderboard')" style="${isLeader?'border-color:'+color:''}">
+        <span class="hn">${S.names[i]||'P'+(i+1)}</span>
+        <span class="hp" style="color:${color}">${t.pts}</span>
+      </div>`;
+    }).join('');
+  }
 
-  // Leaderboard table header
   const lh=document.getElementById('lb-head');
   if(lh){
     lh.innerHTML='<th>Match</th><th>Result</th>'+
@@ -283,7 +310,6 @@ function renderPlayerCards(){
   }
 }
 
-// ── RENDER MATCH CARD ─────────────────────────────────────────
 function fd(d){if(!d)return'';const dt=new Date(d);return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' · '+dt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}
 function stBadge(s){
   if(s==='FINISHED')return'<span class="mst st-fin">Finished</span>';
@@ -302,8 +328,8 @@ function card(m){
   const aw=m.awayTeam?.shortName||m.awayTeam?.name||'TBD';
   const ft=m.score?.fullTime;const ah=ft?.home,aa=ft?.away;
   const has=(ah!==null&&ah!==undefined&&['FINISHED','IN_PLAY','PAUSED'].includes(m.status));
+  const locked=['IN_PLAY','PAUSED','FINISHED'].includes(m.status);
   const pr=S.preds[id]||{};
-
   const preds=Array.from({length:PLAYERS},(_,i)=>{
     const s=sc(id,i);
     const ph=pr['p'+(i+1)+'h'],pa=pr['p'+(i+1)+'a'];
@@ -312,14 +338,13 @@ function card(m){
     return`<div>
       <div class="plbl" style="color:${color}">${name}</div>
       <div class="pinps">
-        <input class="pinp" type="number" min="0" max="30" placeholder="?" value="${ph??''}" oninput="sp(${id},${i},'h',this.value)" style="border-color:${ph!==undefined&&ph!==''?color:''}">
+        <input class="pinp" type="number" min="0" max="30" placeholder="?" value="${ph??''}" ${locked?'disabled':''} oninput="sp(${id},${i},'h',this.value)" style="border-color:${ph!==undefined&&ph!==''?color:''}">
         <span class="psep">:</span>
-        <input class="pinp" type="number" min="0" max="30" placeholder="?" value="${pa??''}" oninput="sp(${id},${i},'a',this.value)" style="border-color:${pa!==undefined&&pa!==''?color:''}">
+        <input class="pinp" type="number" min="0" max="30" placeholder="?" value="${pa??''}" ${locked?'disabled':''} oninput="sp(${id},${i},'a',this.value)" style="border-color:${pa!==undefined&&pa!==''?color:''}">
         ${badge(s)}
       </div>
     </div>`;
   }).join('');
-
   return`<div class="mc">
   <div class="mmeta"><span>${fd(m.utcDate)} · ${m.group||m.stage||''}</span>${stBadge(m.status)}</div>
   <div class="mteams">
@@ -347,7 +372,6 @@ async function load(stage,force){
   }
 }
 
-// ── LEADERBOARD TABLE ─────────────────────────────────────────
 function lb(){
   const tb=document.getElementById('lbody');if(!tb)return;
   function rb(s){
@@ -375,23 +399,20 @@ function lb(){
   renderPlayerCards();
 }
 
-// ── ACTIONS ───────────────────────────────────────────────────
 function sp(id,player,side,v){
   const m=cache[id];
   if(m&&['IN_PLAY','PAUSED','FINISHED'].includes(m.status))return;
   if(!S.preds[id])S.preds[id]={};
   const key='p'+(player+1)+(side==='h'?'h':'a');
   S.preds[id][key]=v===''?'':String(Math.max(0,parseInt(v)||0));
-  renderPlayerCards();scheduleSave();
-  if(document.getElementById('section-leaderboard').classList.contains('active'))lb();
+  scheduleSave();
 }
+
 function saveName(i,v){
   S.names[i]=v;
   scheduleSave();
 }
-function renderAll(){
-  renderPlayerCards();
-}
+
 function go(tab){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
@@ -400,13 +421,13 @@ function go(tab){
   if(ALL.includes(tab))load(tab);
   if(tab==='leaderboard'){renderPlayerCards();lb();}
 }
+
 function toast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg;t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),2500);
 }
 
-// ── INIT ──────────────────────────────────────────────────────
 renderPlayerCards();
 loadRemote();
 setInterval(loadRemote,300000);

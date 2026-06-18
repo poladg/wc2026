@@ -391,8 +391,6 @@ function saveName(i,v){
 }
 function renderAll(){
   renderPlayerCards();
-  ALL.forEach(s=>{if(loaded[s])load(s,1);});
-  if(document.getElementById('section-leaderboard').classList.contains('active'))lb();
 }
 function go(tab){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));

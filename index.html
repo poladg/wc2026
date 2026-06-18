@@ -222,7 +222,9 @@ async function fetchStage(stage){
 function oc(h,a){const hi=parseInt(h),ai=parseInt(a);if(isNaN(hi)||isNaN(ai))return null;return hi>ai?'H':ai>hi?'A':'D';}
 function sc(id,p){
   const m=cache[id];if(!m)return{pts:0,st:'pe'};
-  const ft=m.score?.fullTime;const ah=ft?.home,aa=ft?.away;
+  const et=m.score?.extraTime;const ft=m.score?.fullTime;
+const ah=(et?.home!==null&&et?.home!==undefined)?et.home:ft?.home;
+const aa=(et?.away!==null&&et?.away!==undefined)?et.away:ft?.away;
   if(ah===null||ah===undefined||!['FINISHED','IN_PLAY','PAUSED'].includes(m.status))return{pts:0,st:'pe'};
   const pr=S.preds[id];if(!pr)return{pts:0,st:'pe'};
   const ph=pr['p'+(p+1)+'h'],pa=pr['p'+(p+1)+'a'];
@@ -326,7 +328,9 @@ function card(m){
   const id=m.id;
   const hm=m.homeTeam?.shortName||m.homeTeam?.name||'TBD';
   const aw=m.awayTeam?.shortName||m.awayTeam?.name||'TBD';
-  const ft=m.score?.fullTime;const ah=ft?.home,aa=ft?.away;
+const et=m.score?.extraTime;const ft=m.score?.fullTime;
+const ah=(et?.home!==null&&et?.home!==undefined)?et.home:ft?.home;
+const aa=(et?.away!==null&&et?.away!==undefined)?et.away:ft?.away;
   const has=(ah!==null&&ah!==undefined&&['FINISHED','IN_PLAY','PAUSED'].includes(m.status));
   const locked=['IN_PLAY','PAUSED','FINISHED'].includes(m.status);
   const pr=S.preds[id]||{};
@@ -382,7 +386,9 @@ function lb(){
   }
   tb.innerHTML=Object.values(cache).map(m=>{
     const pr=S.preds[m.id]||{};
-    const ft=m.score?.fullTime;const ah=ft?.home,aa=ft?.away;
+    const et=m.score?.extraTime;const ft=m.score?.fullTime;
+const ah=(et?.home!==null&&et?.home!==undefined)?et.home:ft?.home;
+const aa=(et?.away!==null&&et?.away!==undefined)?et.away:ft?.away;
     const has=(ah!==null&&ah!==undefined&&['FINISHED','IN_PLAY','PAUSED'].includes(m.status));
     const res=has?`${ah}:${aa}`:'—';
     const pcols=Array.from({length:PLAYERS},(_,i)=>{
